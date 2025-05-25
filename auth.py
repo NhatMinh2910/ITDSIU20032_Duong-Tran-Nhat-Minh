@@ -100,60 +100,10 @@ def update_user_profile(user_id, age=None, gender=None, budget=None, group_comp=
         db.commit()
         return True, "Profile updated"
 
-# Save user ratings
-def save_user_rating(user_id, place_id, rating_value):
-    # Convert numpy types to Python native types
-    if hasattr(place_id, 'item'):
-        place_id = place_id.item()
-    if hasattr(rating_value, 'item'):
-        rating_value = rating_value.item()
-    
-    with get_db() as db:
-        # Get place from database
-        place = db.query(Place).filter(Place.place_id == str(place_id)).first()
-        
-        if not place:
-            # If place doesn't exist, create it
-            place = Place(place_id=str(place_id), place_name=str(place_id))
-            db.add(place)
-            db.commit()
-            db.refresh(place)
-        
-        # Check if rating already exists
-        existing_rating = db.query(Rating).filter(
-            Rating.user_id == user_id, 
-            Rating.place_id == place.id
-        ).first()
-        
-        if existing_rating:
-            # Update existing rating
-            existing_rating.rating = rating_value
-        else:
-            # Create new rating
-            new_rating = Rating(user_id=user_id, place_id=place.id, rating=rating_value)
-            db.add(new_rating)
-        
-        db.commit()
-        return True
-
-# Get user ratings
-def get_user_ratings(user_id):
-    with get_db() as db:
-        ratings = db.query(Rating, Place).join(Place).filter(Rating.user_id == user_id).all()
-        return [(place.place_id, place.place_name, float(rating.rating)) for rating, place in ratings]
-
 # Get user by ID
 def get_user_by_id(user_id):
     with get_db() as db:
         return db.query(User).filter(User.id == user_id).first()
-
-# Delete all user ratings
-def delete_all_user_ratings(user_id):
-    with get_db() as db:
-        # Delete all ratings for this user
-        deleted_count = db.query(Rating).filter(Rating.user_id == user_id).delete()
-        db.commit()
-        return deleted_count
 
 # Check if database needs initialization
 def check_and_init_db():
