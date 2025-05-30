@@ -6,14 +6,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import datetime
 from contextlib import contextmanager
-from database import Base, User, Place, Rating
-import getpass
-
-# Get current OS username
-current_user = getpass.getuser()
+from database import Base, User, Place, Rating, get_database_url
 
 # Database setup
-DATABASE_URL = os.environ.get('DATABASE_URL', f'postgresql://{current_user}@localhost:5432/tourism_recommender')
+DATABASE_URL = get_database_url()
 
 # Initialize SQLAlchemy
 engine = create_engine(DATABASE_URL)
