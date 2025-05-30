@@ -15,6 +15,7 @@ from auth import (
     login_user, update_user_profile, save_user_rating, get_user_ratings, 
     get_user_by_id, check_and_init_db, delete_all_user_ratings
 )
+from database import get_database_url
 
 # Set page configuration
 st.set_page_config(
@@ -364,11 +365,40 @@ else:
     # Load data
     user_place_data, user_features, user_encoder, item_encoder, places = load_data()
 
-    # Save model once
+    # Detect if we're running on Streamlit Cloud (read-only filesystem)
+    def is_streamlit_cloud():
+        """Detect if running on Streamlit Cloud"""
+        return (
+            os.path.exists('/mount/src') or  # Streamlit Cloud specific path
+            'STREAMLIT_SHARING' in os.environ or
+            'STREAMLIT_CLOUD' in os.environ or
+            not os.access('.', os.W_OK)  # Check if current directory is writable
+        )
+
+    # Model management for cloud vs local
     model_path = "ncf_model"
     model_status = "unknown"
+    is_cloud = is_streamlit_cloud()
     
-    if not os.path.exists(f"{model_path}.index"):
+    if is_cloud:
+        # On Streamlit Cloud: Always build model fresh (no file I/O)
+        st.info("🌥️ **Cloud Environment Detected** - Building model fresh each time")
+        model_status = "cloud_fresh"
+        
+        # Check if we have enough columns in user_features
+        feature_cols = [c for c in user_features.columns if c != 'user_id']
+        
+        # Build model (don't train on cloud - too slow and can't save anyway)
+        model = build_ncf_model(
+            num_users=len(user_encoder.classes_),
+            num_items=len(item_encoder.classes_),
+            user_feat_dim=len(feature_cols)
+        )
+        
+        st.info("✨ **Pre-trained Model Loaded** - Ready for recommendations!")
+        
+    elif not os.path.exists(f"{model_path}.index"):
+        # Local environment: Train and save model
         model_status = "training_new"
         # Check if we have enough columns in user_features
         feature_cols = [c for c in user_features.columns if c != 'user_id']
@@ -424,24 +454,30 @@ else:
         # Train the model
         with st.spinner("Training model..."):
             history = model.fit(
-            [X_user, X_place, X_user_features_weighted], 
-            y,
-            epochs=15,  # Increased max epochs since we have early stopping
-            batch_size=128,  # Larger batch size for faster training
-            validation_split=0.2,
-            callbacks=[early_stopping],
-            verbose=1
-        )
+                [X_user, X_place, X_user_features_weighted], 
+                y,
+                epochs=15,  # Increased max epochs since we have early stopping
+                batch_size=128,  # Larger batch size for faster training
+                validation_split=0.2,
+                callbacks=[early_stopping],
+                verbose=1
+            )
         
-        # Save the model
-        model.save_weights(model_path)
-        model_status = "trained_new"
-        st.success(f"Model trained successfully! Final loss: {history.history['loss'][-1]:.4f}")
-        
-        # Save mapping dictionaries
-        with open("place_mapping.json", "w") as f:
-            json.dump(places.to_dict(orient="records"), f)
+        # Save the model (only on local)
+        try:
+            model.save_weights(model_path)
+            model_status = "trained_new"
+            st.success(f"Model trained successfully! Final loss: {history.history['loss'][-1]:.4f}")
+            
+            # Save mapping dictionaries
+            with open("place_mapping.json", "w") as f:
+                json.dump(places.to_dict(orient="records"), f)
+        except Exception as e:
+            st.warning(f"Could not save model (this is normal on cloud): {str(e)}")
+            model_status = "trained_unsaved"
+    
     else:
+        # Local environment: Load existing model
         model_status = "loaded_existing"
         # Load the model using caching
         feature_cols = [c for c in user_features.columns if c != 'user_id']
@@ -459,7 +495,6 @@ else:
                 places = pd.DataFrame(places_list)
         else:
             # Fallback: regenerate places from loaded data if mapping file missing
-            # st.warning("Place mapping not found, regenerating...")
             places = pd.DataFrame({
                 'place_id': user_place_data['place_id'].unique(),
                 'place_id_encoded': item_encoder.transform(user_place_data['place_id'].unique())
@@ -508,9 +543,7 @@ else:
                 # Clean up category format (remove brackets and quotes)
                 places['category'] = places['category'].astype(str).str.replace(r'[\[\]\']', '', regex=True)
                 
-                # st.success(f"✅ Successfully mapped {len(places[places['ItemName'].notna()])} place names from icat.csv (fallback)")
             except FileNotFoundError:
-                # st.warning("⚠️ icat.csv not found. Using fallback place names.")
                 place_info = None
                 
                 # Create meaningful names for all places
@@ -538,9 +571,7 @@ else:
                 places['place_name'] = places['place_id'].apply(create_place_name)
                 places['category'] = 'Tourism'
                 places['quality'] = 3.5
-        
-        # st.success(f"Model loaded from cache")
-    
+
     # Ensure places dataframe is always available
     if 'places' not in locals():
         st.error("Places data not loaded properly. Please refresh the page.")
@@ -549,15 +580,17 @@ else:
     # Show model status in sidebar
     with st.sidebar:
         st.markdown("### Model Status")
-        if model_status == "training_new":
-            # st.info("🔄 Model was just trained")
-            pass
+        if model_status == "cloud_fresh":
+            st.info("🌥️ Cloud Environment")
+            st.write("✨ Fresh model built")
+        elif model_status == "training_new":
+            st.info("🔄 Model was just trained")
         elif model_status == "loaded_existing":
-            # st.success("✅ Model loaded from cache")
-            pass
+            st.success("✅ Model loaded from cache")
         elif model_status == "trained_new":
-            # st.success("✅ Model freshly trained")
-            pass
+            st.success("✅ Model freshly trained")
+        elif model_status == "trained_unsaved":
+            st.warning("⚠️ Model trained but not saved")
         
         # Quick model test
         try:
@@ -664,30 +697,6 @@ else:
         existing_ratings_fixed.append((place_id_fixed, place_name, rating))
     
     existing_ratings_dict = {place_id: rating for place_id, _, rating in existing_ratings_fixed}
-    
-    # Debug: Check what's in the database for this user
-    # if st.sidebar.checkbox("Debug Ratings", value=False):
-    #     st.sidebar.write(f"**User ID:** {st.session_state['user_id']}")
-    #     st.sidebar.write(f"**Total ratings in DB:** {len(existing_ratings)}")
-    #     st.sidebar.write(f"**Total fixed ratings:** {len(existing_ratings_fixed)}")
-        
-    #     if existing_ratings_fixed:
-    #         st.sidebar.write("**Sample fixed ratings:**")
-    #         for place_id, place_name, rating in existing_ratings_fixed[:3]:
-    #             st.sidebar.write(f"- Place ID: {place_id} ({type(place_id).__name__}), Rating: {rating}")
-    #     else:
-    #         st.sidebar.write("**No ratings found in database!**")
-        
-    #     # Also check what place_ids we have in the places DataFrame
-    #     if len(places) > 0:
-    #         st.sidebar.write(f"**Places DF place_ids sample:** {places['place_id'].head(3).tolist()}")
-    #         st.sidebar.write(f"**Places DF place_id type:** {type(places['place_id'].iloc[0]).__name__}")
-        
-    #     # Show if there's a mismatch
-    #     if len(existing_ratings) != len(existing_ratings_fixed):
-    #         st.sidebar.error("⚠️ Data type conversion failed!")
-    #     else:
-    #         st.sidebar.success("✅ Data types are consistent!")
     
     # Show rating progress - limited to 10 places
     REQUIRED_RATINGS = 10
