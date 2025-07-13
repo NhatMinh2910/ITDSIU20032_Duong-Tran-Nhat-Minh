@@ -19,7 +19,7 @@ from database import get_database_url
 
 # Set page configuration
 st.set_page_config(
-    page_title="Tourism Recommender System",
+    page_title="TravelMate",
     page_icon="🌍",
     layout="wide"
 )
@@ -36,8 +36,8 @@ if 'username' not in st.session_state:
 check_and_init_db()
 
 # Display header
-st.title("🌍 Tourism Destination Recommender")
-st.markdown("### Using Neural Collaborative Filtering (NCF)")
+st.title("TravelMate")
+st.markdown("### Tourism Recommendation System  Using NCF Model")
 
 # Authentication UI
 if not st.session_state['authenticated']:
@@ -381,21 +381,13 @@ else:
     is_cloud = is_streamlit_cloud()
     
     if is_cloud:
-        # On Streamlit Cloud: Always build model fresh (no file I/O)
-        st.info("🌥️ **Cloud Environment Detected** - Building model fresh each time")
-        model_status = "cloud_fresh"
-        
-        # Check if we have enough columns in user_features
         feature_cols = [c for c in user_features.columns if c != 'user_id']
         
-        # Build model (don't train on cloud - too slow and can't save anyway)
         model = build_ncf_model(
             num_users=len(user_encoder.classes_),
             num_items=len(item_encoder.classes_),
             user_feat_dim=len(feature_cols)
         )
-        
-        st.info("✨ **Pre-trained Model Loaded** - Ready for recommendations!")
         
     elif not os.path.exists(f"{model_path}.index"):
         # Local environment: Train and save model
@@ -577,43 +569,8 @@ else:
         st.error("Places data not loaded properly. Please refresh the page.")
         st.stop()
     
-    # Show model status in sidebar
     with st.sidebar:
-        st.markdown("### Model Status")
-        if model_status == "cloud_fresh":
-            st.info("🌥️ Cloud Environment")
-            st.write("✨ Fresh model built")
-        elif model_status == "training_new":
-            st.info("🔄 Model was just trained")
-        elif model_status == "loaded_existing":
-            st.success("✅ Model loaded from cache")
-        elif model_status == "trained_new":
-            st.success("✅ Model freshly trained")
-        elif model_status == "trained_unsaved":
-            st.warning("⚠️ Model trained but not saved")
-        
-        # Quick model test
-        try:
-            test_pred = model.predict([
-                np.array([0]), 
-                np.array([0]), 
-                np.zeros((1, len(feature_cols)))
-            ], verbose=0)
-            st.write(f"Test prediction: {test_pred[0][0]:.4f}")
-        except Exception as e:
-            st.error(f"Model test failed: {str(e)}")
-        
-        # Debug information
-        # if st.checkbox("Show Data Debug", value=False):
-        #     st.write(f"**Places data shape:** {places.shape}")
-        #     st.write(f"**Places columns:** {list(places.columns)}")
-        #     if len(places) > 0:
-        #         st.write(f"**Sample place names:** {places['place_name'].head().tolist()}")
-        #     else:
-        #         st.error("No places data found!")
-
-    # Main app - Only shown when user is authenticated
-    st.sidebar.title("User Profile")
+        st.sidebar.title("User Profile")
 
     # User profile section
     user = get_user_by_id(st.session_state['user_id'])
@@ -665,7 +622,6 @@ else:
 
     # Rating system
     st.subheader("Rate Tourism Destinations")
-    st.info("🎯 **Simple Process**: Rate 10 destinations, then get your top 3 personalized recommendations!")
     
     # Check if places data is available
     try:
@@ -698,8 +654,8 @@ else:
     
     existing_ratings_dict = {place_id: rating for place_id, _, rating in existing_ratings_fixed}
     
-    # Show rating progress - limited to 10 places
-    REQUIRED_RATINGS = 10
+    # Show rating progress - limited to 5 places
+    REQUIRED_RATINGS = 5
     total_places = len(places)
     rated_count = len(existing_ratings_fixed)
     
@@ -1181,11 +1137,3 @@ else:
         # Show encouragement if user has started but not finished rating
         remaining = REQUIRED_RATINGS - rated_count
         st.info(f"💡 **Almost there!** Rate {remaining} more destinations to unlock your personalized recommendations.")
-
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center;">
-    <p>Tourism Recommender System using Neural Collaborative Filtering (NCF)</p>
-</div>
-""", unsafe_allow_html=True) 
