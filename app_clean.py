@@ -29,37 +29,37 @@ st.markdown("""
 <style>
     /* Main app background */
     .stApp {
-        background-color: #D3D3D3 !important;
+        background-color: #F5F5F5 !important;
     }
     
     /* Main content area */
     .main .block-container {
-        background-color: #D3D3D3 !important;
+        background-color: #F5F5F5 !important;
     }
     
     /* Sidebar background */
     .css-1d391kg, .css-1lcbmhc, .css-17eq0hr {
-        background-color: #D3D3D3 !important;
+        background-color: #F5F5F5 !important;
     }
     
     /* Header and footer areas */
     .css-18e3th9, .css-1d391kg, header {
-        background-color: #D3D3D3 !important;
+        background-color: #F5F5F5 !important;
     }
     
     /* Tab content areas */
     .stTabs [data-baseweb="tab-list"] {
-        background-color: #D3D3D3 !important;
+        background-color: #F5F5F5 !important;
     }
     
     /* Form and container backgrounds */
     .stForm, .stContainer {
-        background-color: #D3D3D3 !important;
+        background-color: #F5F5F5 !important;
     }
     
     /* Overall page background */
     html, body, [data-testid="stAppViewContainer"] {
-        background-color: #D3D3D3 !important;
+        background-color: #F5F5F5 !important;
     }
 </style>
 """, unsafe_allow_html=True)
