@@ -24,6 +24,46 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS to set background color for the entire app
+st.markdown("""
+<style>
+    /* Main app background */
+    .stApp {
+        background-color: #D3D3D3 !important;
+    }
+    
+    /* Main content area */
+    .main .block-container {
+        background-color: #D3D3D3 !important;
+    }
+    
+    /* Sidebar background */
+    .css-1d391kg, .css-1lcbmhc, .css-17eq0hr {
+        background-color: #D3D3D3 !important;
+    }
+    
+    /* Header and footer areas */
+    .css-18e3th9, .css-1d391kg, header {
+        background-color: #D3D3D3 !important;
+    }
+    
+    /* Tab content areas */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #D3D3D3 !important;
+    }
+    
+    /* Form and container backgrounds */
+    .stForm, .stContainer {
+        background-color: #D3D3D3 !important;
+    }
+    
+    /* Overall page background */
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #D3D3D3 !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Initialize session state
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
@@ -36,7 +76,7 @@ if 'username' not in st.session_state:
 check_and_init_db()
 
 # Display header
-st.title("TravelMate")
+st.title("🌍 TravelMate")
 st.markdown("### Tourism Recommendation System  Using NCF Model")
 
 # Authentication UI
