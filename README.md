@@ -1,6 +1,6 @@
 # Tourism Destination Recommender
 
-A Streamlit web application that recommends tourism destinations using Neural Collaborative Filtering (NCF) with user authentication, PostgreSQL database integration, and destination names.
+A Streamlit web application that recommends tourism destinations using Neural Collaborative Filtering (NCF) with user authentication, PostgreSQL database integration, and destination names. Deployed website URL: https://travelmate-iu.streamlit.app/
 
 ## Features
 
@@ -109,9 +109,9 @@ The NCF model architecture:
 - Label encoding for user and place IDs
 
 ### Feature Weighting
-- Age: 30% weight
+- Age: 20% weight
 - Gender: 30% weight
-- Budget: 20% weight
+- Budget: 30% weight
 - Group Composition: 20% weight (distributed evenly among group types)
 
 ### Model Architecture
